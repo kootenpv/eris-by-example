@@ -15,36 +15,36 @@
 
 
 ########################################
-## Step 0 - Installs		      ##
+## Step 0 - Installs              ##
 ########################################
 
 # you are expected to:
 # - be on a unix platform
-# - have golang installed (https://golang.org/doc/install)
+# - have golang 1.4.2 installed (https://golang.org/doc/install)
 # - set $GOPATH, set GOBIN=$GOPATH/bin, set PATH=$GOBIN:$PATH
 # - have jq installed (https://stedolan.github.io/jq/download)
 
 # now install the eris tools:
 
 if [[ "$NO_INSTALL" == "" ]]; then
-	# install the keys daemon for signing transactions
-	go get github.com/eris-ltd/eris-keys
+    # install the keys daemon for signing transactions
+    go get github.com/eris-ltd/eris-keys
 
-	# install the mint-client tools
-	go get github.com/eris-ltd/mint-client/...
+    # install the mint-client tools
+    go get github.com/eris-ltd/mint-client/...
 
-	# install the erisdb (requires branch 0.10.3)
-	git clone https://github.com/eris-ltd/erisdb $GOPATH/src/github.com/eris-ltd/erisdb
-	cd $GOPATH/src/github.com/eris-ltd/erisdb
-	git checkout 0.10.3
-	go install ./cmd/erisdb
+    # install the erisdb (requires branch 0.10.3)
+    git clone https://github.com/eris-ltd/erisdb $GOPATH/src/github.com/eris-ltd/eris-db
+    cd $GOPATH/src/github.com/eris-ltd/erisdb
+    git checkout 0.10.3
+    go install ./cmd/erisdb
 
-	# install the eris-abi tool (required for formatting transactions to contracts)
-	go get github.com/eris-ltd/eris-abi/cmd/eris-abi
+    # install the eris-abi tool (required for formatting transactions to contracts)
+    go get github.com/eris-ltd/eris-abi/cmd/eris-abi
 fi
 
 ########################################
-## Step 1 - Start a chain	      ##
+## Step 1 - Start a chain         ##
 ########################################
 
 # set the chain id:
@@ -86,7 +86,7 @@ contract MyContract {
 
   function add(int a, int b) constant returns (int sum) {
         sum = a + b;
-	  }
+      }
   }
 EOM
 
@@ -96,9 +96,9 @@ CODE64=`echo $CODE | base64`
 # json data for the curl request to the compile server
 read -r -d '' JSON_DATA << EOM
 {
-	"name":"mycontract",
-	"language":"sol",
-	"script":"$CODE64"
+    "name":"mycontract",
+    "language":"sol",
+    "script":"$CODE64"
 }
 EOM
 
@@ -122,7 +122,7 @@ BYTECODE=`echo $BYTECODE | base64 -D | hexdump -ve '1/1 "%.2X"'`
 
 # unescape quotes in the json and write the ABI to file
 # TODO: fix the lllc-server so this doesn't happen
-ABI=`eval echo $ABI` 
+ABI=`eval echo $ABI`
 ABI=`echo $ABI | jq .`
 echo $ABI > add.abi
 
@@ -155,7 +155,7 @@ GAS=1000
 AMOUNT=1
 NONCE=$(($NONCE + 1)) # the nonce in the transaction must be one greater than the account's current nonce
 
-# the string that must be signed is a special, canonical, deterministic json structure 
+# the string that must be signed is a special, canonical, deterministic json structure
 # that includes the chain_id and the transaction, where all fields are alphabetically ordered and there are no spaces
 SIGN_BYTES='{"chain_id":"'"$CHAIN_ID"'","tx":['"$CALLTX_TYPE"',{"address":"","data":"'"$BYTECODE"'","fee":'"$FEE"',"gas_limit":'"$GAS"',"input":{"address":"'"$ADDRESS"'","amount":'"$AMOUNT"',"sequence":'"$NONCE"'}}]}'
 
@@ -175,8 +175,8 @@ echo ""
 # (we gave it the private key for this address at the beginning - with mintkey)
 read -r -d '' REQ << EOM
 {
-	"msg":"$SIGN_BYTES_HEX",
-	"addr":"$ADDRESS"
+    "msg":"$SIGN_BYTES_HEX",
+    "addr":"$ADDRESS"
 }
 EOM
 
@@ -198,17 +198,17 @@ PUBKEY=`eris-keys pub --addr=$ADDRESS`
 # since it's a CallTx with an empty address, a new contract will be created from the data (the bytecode)
 read -r -d '' CREATE_CONTRACT_TX << EOM
 [$CALLTX_TYPE, {
-	"input":{
-		"address":"$ADDRESS",
-		"amount":$AMOUNT,
-		"sequence":$NONCE,
-		"signature":[1,$SIGNATURE],
-		"pub_key":[1,"$PUBKEY"]
-	},
-	"address":"",
-	"gas_limit":$GAS,
-	"fee":$FEE,
-	"data":"$BYTECODE"
+    "input":{
+        "address":"$ADDRESS",
+        "amount":$AMOUNT,
+        "sequence":$NONCE,
+        "signature":[1,$SIGNATURE],
+        "pub_key":[1,"$PUBKEY"]
+    },
+    "address":"",
+    "gas_limit":$GAS,
+    "fee":$FEE,
+    "data":"$BYTECODE"
 }]
 EOM
 
@@ -238,7 +238,7 @@ echo $CONTRACT_ADDRESS
 echo ""
 
 #############################################
-## Step 5 - Wait for a confirmation	   ##
+## Step 5 - Wait for a confirmation    ##
 #############################################
 
 # now we wait for a block to be confirmed by polling the status endpoint until the block_height increases
@@ -248,7 +248,7 @@ BLOCKHEIGHT_START=`curl -X GET 'http://'"$ERISDB_HOST"'/status' --silent | jq ."
 BLOCKHEIGHT=$BLOCKHEIGHT_START
 
 while [[ "$BLOCKHEIGHT_START" == "$BLOCKHEIGHT" ]]; do
-	BLOCKHEIGHT=`curl -X GET 'http://'"$ERISDB_HOST"'/status' --silent | jq ."result"[1]."latest_block_height"`
+    BLOCKHEIGHT=`curl -X GET 'http://'"$ERISDB_HOST"'/status' --silent | jq ."result"[1]."latest_block_height"`
 done
 
 echo "BLOCKHEIGHT"
@@ -272,15 +272,15 @@ echo "CODE AT CONTRACT:"
 echo $CODE
 echo ""
 
-# NOTE: CODE won't be exactly equal to BYTECODE 
+# NOTE: CODE won't be exactly equal to BYTECODE
 # because BYTECODE contains additional code for the actual deployment (the init/constructor sequence of a contract)
 # so we only ensure that BYTECODE contains CODE
 if [[ "$BYTECODE" == *"$CODE"* ]]; then
-	echo "THE CODE WAS DEPLOYED CORRECTLY!"
+    echo "THE CODE WAS DEPLOYED CORRECTLY!"
 else
-	echo "THE CODE AT THE CONTRACT ADDRESS IS NOT WHAT WE DEPLOYED!"
-	echo "Deployed: $BYTECODE"
-	echo "Got: $CODE"
+    echo "THE CODE AT THE CONTRACT ADDRESS IS NOT WHAT WE DEPLOYED!"
+    echo "Deployed: $BYTECODE"
+    echo "Got: $CODE"
 fi
 
 ##################################################################
@@ -327,12 +327,12 @@ SUM_GOT=`echo $((16#$SUM_GOT))`
 
 
 if [[ "$SUM_GOT" != "$SUM_EXPECTED" ]]; then
-	echo "SMART CONTRACT ADDITION TX FAILED"
-	echo "GOT $SUM_GOT"
-	echo "EXPECTED $SUM_EXPECTED"
+    echo "SMART CONTRACT ADDITION TX FAILED"
+    echo "GOT $SUM_GOT"
+    echo "EXPECTED $SUM_EXPECTED"
 else
-	echo "SMART CONTRACT ADDITION TX SUCCEEDED!"
-	echo "$ARG1 + $ARG2 = $SUM_GOT"
+    echo "SMART CONTRACT ADDITION TX SUCCEEDED!"
+    echo "$ARG1 + $ARG2 = $SUM_GOT"
 fi
 echo ""
 
@@ -355,10 +355,10 @@ SUM_GOT="${SUM_GOT#\"}"
 SUM_GOT=`echo $((16#$SUM_GOT))`
 
 if [[ "$SUM_GOT" != "$SUM_EXPECTED" ]]; then
-	echo "SMART CONTRACT ADDITION QUERY FAILED"
-	echo "GOT $SUM_GOT"
-	echo "EXPECTED $SUM_EXPECTED"
+    echo "SMART CONTRACT ADDITION QUERY FAILED"
+    echo "GOT $SUM_GOT"
+    echo "EXPECTED $SUM_EXPECTED"
 else
-	echo "SMART CONTRACT ADDITION QUERY SUCCEEDED!"
-	echo "$ARG1 + $ARG2 = $SUM_GOT"
+    echo "SMART CONTRACT ADDITION QUERY SUCCEEDED!"
+    echo "$ARG1 + $ARG2 = $SUM_GOT"
 fi
